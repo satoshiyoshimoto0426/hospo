@@ -1,34 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "webapp",
-  "compatibility_date": "2025-09-15",
+  "name": "pdf-summarizer",
+  "compatibility_date": "2024-01-01",
   "pages_build_output_dir": "./dist",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // }
+  "compatibility_flags": ["nodejs_compat"],
+  
+  // Environment variables are set via:
+  // 1. .dev.vars file for local development
+  // 2. wrangler pages secret put for production
+  // Example:
+  // npx wrangler pages secret put OPENAI_API_KEY --project-name pdf-summarizer
+  // npx wrangler pages secret put BASIC_USER --project-name pdf-summarizer
+  // npx wrangler pages secret put BASIC_PASS --project-name pdf-summarizer
 }
