@@ -8,7 +8,7 @@
   // Environment variables are set via:
   // 1. .dev.vars file for local development
   // 2. wrangler pages secret put for production
-  // Example:
+  // Example (using DeepSeek API):
   // npx wrangler pages secret put OPENAI_API_KEY --project-name pdf-summarizer
   // npx wrangler pages secret put BASIC_USER --project-name pdf-summarizer
   // npx wrangler pages secret put BASIC_PASS --project-name pdf-summarizer

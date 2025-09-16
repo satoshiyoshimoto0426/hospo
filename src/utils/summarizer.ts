@@ -1,4 +1,4 @@
-// Summarization utility using OpenAI API
+// Summarization utility using DeepSeek API (OpenAI compatible)
 import { OpenAI } from 'openai'
 
 // System prompt for summarization
@@ -69,8 +69,10 @@ export async function processSummaries(
   model: string,
   maxConcurrency: number
 ): Promise<Map<string, string>> {
+  // Use DeepSeek API with OpenAI compatible client
   const openai = new OpenAI({
     apiKey: openaiApiKey,
+    baseURL: 'https://api.deepseek.com/v1', // DeepSeek API endpoint
   })
   
   const summaries = new Map<string, string>()

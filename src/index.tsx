@@ -348,7 +348,7 @@ app.get('/', (c) => {
 
 // Upload endpoint
 app.post('/api/upload', async (c) => {
-  const { OPENAI_API_KEY, OPENAI_MODEL = 'gpt-4o-mini', MAX_CONCURRENCY = '8' } = c.env
+  const { OPENAI_API_KEY, OPENAI_MODEL = 'deepseek-reasoner', MAX_CONCURRENCY = '8' } = c.env
   
   // Check basic auth
   if (!checkBasicAuth(c)) {

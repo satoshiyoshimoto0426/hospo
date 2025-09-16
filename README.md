@@ -70,13 +70,13 @@
   4. 並列要約生成
   5. Excel生成・ダウンロード
 - **ストレージ**: メモリ内処理のみ（データ非保存）
-- **外部API**: OpenAI API（gpt-4o-mini）
+- **外部API**: DeepSeek API（deepseek-reasoner）
 
 ## 環境変数設定
 ```env
 # .dev.vars または Cloudflare Pages Secrets
-OPENAI_API_KEY=your-api-key       # 必須: OpenAI APIキー
-OPENAI_MODEL=gpt-4o-mini          # 任意: 使用モデル（デフォルト: gpt-4o-mini）
+OPENAI_API_KEY=your-api-key       # 必須: DeepSeek APIキー
+OPENAI_MODEL=deepseek-reasoner    # 任意: 使用モデル（デフォルト: deepseek-reasoner）
 BASIC_USER=admin                  # 任意: Basic認証ユーザー名
 BASIC_PASS=password123            # 任意: Basic認証パスワード
 MAX_CONCURRENCY=8                 # 任意: 最大並列処理数（デフォルト: 8）
@@ -137,7 +137,7 @@ npx wrangler pages secret put BASIC_PASS --project-name pdf-summarizer
 - **UI**: TailwindCSS + FontAwesome
 - **PDF処理**: カスタム実装（テキスト抽出）
 - **Excel生成**: ExcelJS 4.4.0
-- **AI**: OpenAI API (GPT-4o-mini)
+- **AI**: DeepSeek API (deepseek-reasoner)
 - **開発ツール**: Vite, Wrangler, PM2
 
 ## セキュリティ考慮事項
