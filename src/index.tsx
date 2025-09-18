@@ -397,6 +397,19 @@ app.post('/api/upload', async (c) => {
     
     console.log(`Found ${sections.size} person sections`)
     
+    // Log section details for debugging
+    let totalChars = 0
+    for (const [name, content] of sections) {
+      console.log(`  - ${name}: ${content.length} characters`)
+      totalChars += content.length
+    }
+    console.log(`Total characters across all sections: ${totalChars}`)
+    
+    // Warn if sections seem unusually large
+    if (sections.size === 1 && totalChars > 100000) {
+      console.warn('WARNING: Only 1 section found with very large content. PDF splitting may have failed.')
+    }
+    
     // Process summaries with OpenAI
     const maxConcurrency = parseInt(MAX_CONCURRENCY)
     const summaries = await processSummaries(
