@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
 import { extractTextFromPDF } from './utils/pdf-extractor'
+import { extractFromExcel } from './utils/excel-reader'
 import { splitByPerson } from './utils/text-splitter'
 import { processSummaries } from './utils/summarizer'
 import { buildExcel } from './utils/excel-generator'
@@ -55,7 +56,7 @@ const INDEX_HTML = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>月次PDF → Excel要約（200〜300文字・敬体）</title>
+    <title>月次経過記録 → Excel要約（200〜300文字・敬体）</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -65,10 +66,24 @@ const INDEX_HTML = `<!DOCTYPE html>
             <!-- Header -->
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-gray-800 mb-2">
-                    <i class="fas fa-file-pdf text-red-600 mr-3"></i>
+                    <i class="fas fa-file-alt text-blue-600 mr-3"></i>
                     月次経過記録要約システム
                 </h1>
                 <p class="text-gray-600">高齢者デイサービス向け AI要約ツール</p>
+            </div>
+            
+            <!-- Important Notice -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded">
+                <div class="flex">
+                    <i class="fas fa-exclamation-circle text-yellow-600 mt-1 mr-3"></i>
+                    <div>
+                        <p class="text-yellow-800 font-semibold mb-1">推奨ファイル形式</p>
+                        <p class="text-yellow-700 text-sm">
+                            <span class="font-medium">Excelファイル（.xlsx）</span>を推奨します。
+                            PDFの場合、文字化けする可能性があります。
+                        </p>
+                    </div>
+                </div>
             </div>
             
             <!-- Main Card -->
@@ -81,7 +96,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                     <ul class="space-y-2 text-gray-600">
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
-                            <span>60名分の月次経過記録を自動で個別に分割</span>
+                            <span>Excel・PDFファイルから60名分の記録を自動抽出</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
@@ -98,14 +113,27 @@ const INDEX_HTML = `<!DOCTYPE html>
                     </ul>
                 </div>
                 
+                <!-- File Format Guide -->
+                <div class="mb-6 bg-blue-50 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-2">
+                        <i class="fas fa-file-excel text-green-600 mr-2"></i>
+                        推奨Excelファイル形式
+                    </h3>
+                    <ul class="text-sm text-blue-700 space-y-1">
+                        <li>• 列構成: 「氏名」列と「記録内容」列</li>
+                        <li>• または各シートに1名分の記録</li>
+                        <li>• UTF-8エンコーディング（文字化け防止）</li>
+                    </ul>
+                </div>
+                
                 <form id="uploadForm" class="space-y-6">
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-all duration-300 bg-gray-50 hover:bg-blue-50">
-                        <input type="file" id="pdfFile" accept=".pdf" class="hidden" />
-                        <label for="pdfFile" class="cursor-pointer block">
+                        <input type="file" id="file" accept=".xlsx,.xls,.pdf" class="hidden" />
+                        <label for="file" class="cursor-pointer block">
                             <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-4"></i>
-                            <p class="text-lg font-medium text-gray-700" id="fileLabel">PDFファイルを選択してください</p>
+                            <p class="text-lg font-medium text-gray-700" id="fileLabel">Excel または PDFファイルを選択</p>
                             <p class="text-sm text-gray-500 mt-2">クリックまたはドラッグ＆ドロップ</p>
-                            <p class="text-xs text-gray-400 mt-1">最大サイズ: 30MB</p>
+                            <p class="text-xs text-gray-400 mt-1">対応形式: .xlsx, .xls, .pdf（最大30MB）</p>
                         </label>
                     </div>
                     
@@ -171,7 +199,7 @@ const INDEX_HTML = `<!DOCTYPE html>
     </div>
 
     <script>
-        const fileInput = document.getElementById('pdfFile');
+        const fileInput = document.getElementById('file');
         const fileLabel = document.getElementById('fileLabel');
         const submitBtn = document.getElementById('submitBtn');
         const uploadForm = document.getElementById('uploadForm');
@@ -188,10 +216,17 @@ const INDEX_HTML = `<!DOCTYPE html>
             const file = e.target.files[0];
             if (file) {
                 const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                fileLabel.innerHTML = \`<span class="text-blue-600 font-medium">\${file.name}</span><br><span class="text-sm text-gray-500">(\${sizeMB} MB)</span>\`;
+                const extension = file.name.split('.').pop().toLowerCase();
+                let icon = 'fa-file';
+                if (extension === 'xlsx' || extension === 'xls') {
+                    icon = 'fa-file-excel text-green-600';
+                } else if (extension === 'pdf') {
+                    icon = 'fa-file-pdf text-red-600';
+                }
+                fileLabel.innerHTML = \`<i class="fas \${icon} mr-2"></i><span class="font-medium">\${file.name}</span><br><span class="text-sm text-gray-500">(\${sizeMB} MB)</span>\`;
                 submitBtn.disabled = false;
             } else {
-                fileLabel.textContent = 'PDFファイルを選択してください';
+                fileLabel.innerHTML = 'Excel または PDFファイルを選択';
                 submitBtn.disabled = true;
             }
         });
@@ -230,11 +265,21 @@ const INDEX_HTML = `<!DOCTYPE html>
             const dt = e.dataTransfer;
             const files = dt.files;
             
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                fileInput.files = files;
-                const sizeMB = (files[0].size / 1024 / 1024).toFixed(2);
-                fileLabel.innerHTML = \`<span class="text-blue-600 font-medium">\${files[0].name}</span><br><span class="text-sm text-gray-500">(\${sizeMB} MB)</span>\`;
-                submitBtn.disabled = false;
+            if (files.length > 0) {
+                const file = files[0];
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (['xlsx', 'xls', 'pdf'].includes(extension)) {
+                    fileInput.files = files;
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    let icon = 'fa-file';
+                    if (extension === 'xlsx' || extension === 'xls') {
+                        icon = 'fa-file-excel text-green-600';
+                    } else if (extension === 'pdf') {
+                        icon = 'fa-file-pdf text-red-600';
+                    }
+                    fileLabel.innerHTML = \`<i class="fas \${icon} mr-2"></i><span class="font-medium">\${file.name}</span><br><span class="text-sm text-gray-500">(\${sizeMB} MB)</span>\`;
+                    submitBtn.disabled = false;
+                }
             }
         }
         
@@ -258,14 +303,17 @@ const INDEX_HTML = `<!DOCTYPE html>
             progressArea.classList.remove('hidden');
             submitBtn.disabled = true;
             
-            // Update progress
-            updateProgress(10, 'PDFをアップロード中...', 'ファイルを送信しています');
+            // Update progress based on file type
+            const extension = file.name.split('.').pop().toLowerCase();
+            const fileType = (extension === 'xlsx' || extension === 'xls') ? 'Excel' : 'PDF';
+            
+            updateProgress(10, \`\${fileType}ファイルをアップロード中...\`, 'ファイルを送信しています');
             
             const formData = new FormData();
             formData.append('file', file);
             
             try {
-                updateProgress(30, 'PDFを解析中...', 'テキストを抽出しています');
+                updateProgress(30, \`\${fileType}ファイルを解析中...\`, 'データを抽出しています');
                 
                 const response = await fetch('/api/upload', {
                     method: 'POST',
@@ -310,7 +358,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                     // Reset form after 3 seconds
                     setTimeout(() => {
                         fileInput.value = '';
-                        fileLabel.textContent = 'PDFファイルを選択してください';
+                        fileLabel.innerHTML = 'Excel または PDFファイルを選択';
                         successArea.classList.add('hidden');
                     }, 3000);
                 }, 1000);
@@ -319,7 +367,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                 console.error('Upload error:', error);
                 progressArea.classList.add('hidden');
                 errorArea.classList.remove('hidden');
-                errorText.textContent = error.message || '処理中にエラーが発生しました。PDFファイルが正しい形式か確認してください。';
+                errorText.textContent = error.message || '処理中にエラーが発生しました。Excelファイル（.xlsx）の使用を推奨します。';
                 submitBtn.disabled = false;
             }
         });
@@ -346,7 +394,7 @@ app.get('/', (c) => {
   return c.html(INDEX_HTML)
 })
 
-// Upload endpoint
+// Upload endpoint - supports both Excel and PDF
 app.post('/api/upload', async (c) => {
   const { OPENAI_API_KEY, OPENAI_MODEL = 'deepseek-reasoner', MAX_CONCURRENCY = '8' } = c.env
   
@@ -357,7 +405,7 @@ app.post('/api/upload', async (c) => {
   
   // Check if OpenAI API key is configured
   if (!OPENAI_API_KEY) {
-    return c.text('OpenAI APIキーが設定されていません', 500)
+    return c.text('DeepSeek APIキーが設定されていません', 500)
   }
   
   try {
@@ -365,8 +413,8 @@ app.post('/api/upload', async (c) => {
     const formData = await c.req.formData()
     const file = formData.get('file') as File
     
-    if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
-      return c.text('PDFファイルをアップロードしてください', 400)
+    if (!file) {
+      return c.text('ファイルがアップロードされていません', 400)
     }
     
     // Check file size (30MB limit)
@@ -374,25 +422,53 @@ app.post('/api/upload', async (c) => {
       return c.text('ファイルサイズが大きすぎます（最大30MB）', 400)
     }
     
-    console.log(`Processing PDF: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`)
+    const fileName = file.name.toLowerCase()
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls')
+    const isPDF = fileName.endsWith('.pdf')
     
-    // Read PDF content
-    const buffer = await file.arrayBuffer()
-    
-    // Extract text from PDF
-    const text = await extractTextFromPDF(buffer)
-    
-    if (!text || text.trim().length < 100) {
-      return c.text('PDFからテキストを抽出できませんでした。テキスト抽出可能なPDFファイルか確認してください', 400)
+    if (!isExcel && !isPDF) {
+      return c.text('対応していないファイル形式です。Excel（.xlsx/.xls）またはPDF（.pdf）をアップロードしてください', 400)
     }
     
-    console.log(`Extracted text length: ${text.length} characters`)
+    console.log(`Processing ${isExcel ? 'Excel' : 'PDF'} file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`)
     
-    // Split by person
-    const sections = splitByPerson(text)
+    // Read file content
+    const buffer = await file.arrayBuffer()
+    
+    let sections: Map<string, string>
+    
+    if (isExcel) {
+      // Process Excel file
+      console.log('Processing as Excel file')
+      try {
+        sections = await extractFromExcel(buffer)
+      } catch (error) {
+        console.error('Excel extraction failed:', error)
+        return c.text(`Excelファイルの読み取りに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`, 400)
+      }
+    } else {
+      // Process PDF file
+      console.log('Processing as PDF file')
+      const text = await extractTextFromPDF(buffer)
+      
+      if (!text || text.trim().length < 100) {
+        return c.text('PDFからテキストを抽出できませんでした。Excelファイル（.xlsx）の使用を推奨します', 400)
+      }
+      
+      console.log(`Extracted text length: ${text.length} characters`)
+      
+      // Check for garbled text
+      const garbledRatio = (text.match(/[�\uFFFD]/g) || []).length / text.length
+      if (garbledRatio > 0.1) {
+        return c.text('PDFの文字が正しく読み取れません。Excelファイル（.xlsx）の使用を強く推奨します', 400)
+      }
+      
+      // Split by person
+      sections = splitByPerson(text)
+    }
     
     if (sections.size === 0) {
-      return c.text('利用者ごとのセクションを検出できませんでした', 400)
+      return c.text('利用者ごとのセクションを検出できませんでした。ファイル形式を確認してください', 400)
     }
     
     console.log(`Found ${sections.size} person sections`)
@@ -407,10 +483,10 @@ app.post('/api/upload', async (c) => {
     
     // Warn if sections seem unusually large
     if (sections.size === 1 && totalChars > 100000) {
-      console.warn('WARNING: Only 1 section found with very large content. PDF splitting may have failed.')
+      console.warn('WARNING: Only 1 section found with very large content. File splitting may have failed.')
     }
     
-    // Process summaries with OpenAI
+    // Process summaries with OpenAI/DeepSeek
     const maxConcurrency = parseInt(MAX_CONCURRENCY)
     const summaries = await processSummaries(
       sections,
@@ -450,7 +526,8 @@ app.get('/api/health', (c) => {
   return c.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '2.0.0',
+    features: ['Excel', 'PDF', 'DeepSeek AI']
   })
 })
 
