@@ -79,7 +79,12 @@ ${maskedContent}
 ---
 ${SUMMARY_INSTRUCTIONS}`
 
-    console.log(`Sending request for ${name} (prompt length: ${userPrompt.length} chars)`)
+    console.log(`Sending request for ${name}:`, {
+      promptLength: userPrompt.length,
+      model: model,
+      apiKeyPrefix: openai.apiKey?.substring(0, 10) + '...',
+      baseURL: openai.baseURL
+    })
 
     const response = await openai.chat.completions.create({
       model: model,

@@ -517,7 +517,7 @@ app.get('/', (c) => {
 
 // Process endpoint - handles all three modes
 app.post('/api/process', async (c) => {
-  const { OPENAI_API_KEY, OPENAI_MODEL = 'deepseek-reasoner', MAX_CONCURRENCY = '8' } = c.env
+  const { OPENAI_API_KEY, OPENAI_MODEL = 'deepseek-chat', MAX_CONCURRENCY = '8' } = c.env
   
   // Log environment variables for debugging (mask sensitive data)
   console.log('Environment check:', {
