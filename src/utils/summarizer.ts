@@ -90,12 +90,21 @@ ${SUMMARY_INSTRUCTIONS}`
         { role: 'user', content: userPrompt }
       ]
     }).catch(error => {
-      console.error('DeepSeek API error:', {
+      console.error('DeepSeek API error details:', {
         message: error.message,
         status: error.status,
+        statusCode: error.statusCode,
         code: error.code,
-        type: error.type
+        type: error.type,
+        response: error.response,
+        cause: error.cause
       })
+      
+      // Check if it's an authentication error
+      if (error.status === 401 || error.message?.includes('401')) {
+        throw new Error(`DeepSeek API認証エラー: APIキーが無効です。キー: ${openai.apiKey.substring(0, 10)}...`)
+      }
+      
       throw error
     })
     
@@ -119,21 +128,40 @@ ${SUMMARY_INSTRUCTIONS}`
     }
     
     return summary
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to summarize for ${name}:`, error)
+    
+    // Log detailed error information
+    if (error.response) {
+      console.error('API Response Error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      })
+    }
     
     // Provide more specific error messages
     if (error instanceof Error) {
-      if (error.message.includes('maximum context length')) {
+      // Check for specific DeepSeek error messages
+      const errorMsg = error.message.toLowerCase()
+      
+      if (errorMsg.includes('maximum context length') || errorMsg.includes('token')) {
         return `要約失敗: テキストが長すぎます。管理者にお問い合わせください。`
       }
-      if (error.message.includes('invalid_api_key')) {
-        return `要約失敗: APIキーが無効です。設定を確認してください。`
+      if (errorMsg.includes('invalid_api_key') || errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+        return `要約失敗: DeepSeek APIキーが無効です。APIキーを確認してください: ${error.message}`
       }
-      if (error.message.includes('rate_limit')) {
+      if (errorMsg.includes('rate_limit') || errorMsg.includes('429')) {
         return `要約失敗: API制限に達しました。しばらくお待ちください。`
       }
-      return `要約失敗: ${error.message.substring(0, 100)}`
+      if (errorMsg.includes('model') || errorMsg.includes('not found')) {
+        return `要約失敗: モデル名が正しくありません。deepseek-reasonerが利用可能か確認してください。`
+      }
+      if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        return `要約失敗: ネットワークエラー。DeepSeek APIに接続できません。`
+      }
+      
+      return `要約失敗: ${error.message}`
     }
     return `要約失敗: 不明なエラー`
   }
