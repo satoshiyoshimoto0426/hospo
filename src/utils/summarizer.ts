@@ -89,6 +89,14 @@ ${SUMMARY_INSTRUCTIONS}`
         { role: 'system', content: SUMMARY_SYSTEM },
         { role: 'user', content: userPrompt }
       ]
+    }).catch(error => {
+      console.error('DeepSeek API error:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        type: error.type
+      })
+      throw error
     })
     
     let summary = response.choices[0]?.message?.content?.trim() || '要約生成に失敗しました'
@@ -138,6 +146,14 @@ export async function processSummaries(
   model: string,
   maxConcurrency: number
 ): Promise<Map<string, string>> {
+  // Validate API key
+  if (!openaiApiKey || openaiApiKey.length < 10) {
+    console.error('Invalid API key provided:', openaiApiKey ? 'key too short' : 'key missing')
+    throw new Error('有効なAPIキーが設定されていません')
+  }
+  
+  console.log('Initializing DeepSeek API client with key:', openaiApiKey.substring(0, 5) + '...')
+  
   // Use DeepSeek API with OpenAI compatible client
   const openai = new OpenAI({
     apiKey: openaiApiKey,

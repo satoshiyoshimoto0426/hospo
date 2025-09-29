@@ -425,7 +425,15 @@ const INDEX_HTML = `<!DOCTYPE html>
                 });
                 
                 if (!response.ok) {
-                    throw new Error(await response.text());
+                    const errorData = await response.text();
+                    let errorMessage = 'エラーが発生しました';
+                    try {
+                        const errorJson = JSON.parse(errorData);
+                        errorMessage = errorJson.error || errorMessage;
+                    } catch {
+                        errorMessage = errorData || errorMessage;
+                    }
+                    throw new Error(errorMessage);
                 }
                 
                 // Update progress based on mode
@@ -465,9 +473,21 @@ const INDEX_HTML = `<!DOCTYPE html>
                 }, 1000);
                 
             } catch (error) {
+                console.error('Processing error:', error);
                 progressArea.classList.add('hidden');
                 errorArea.classList.remove('hidden');
-                errorText.textContent = error.message;
+                
+                // Provide more helpful error messages
+                let errorMessage = error.message || 'エラーが発生しました';
+                if (errorMessage.includes('APIキー')) {
+                    errorMessage += ' (DeepSeek APIキーの設定を確認してください)';
+                } else if (errorMessage.includes('Failed to fetch')) {
+                    errorMessage = 'サーバーに接続できません。しばらく待ってから再試行してください。';
+                } else if (errorMessage.includes('timeout')) {
+                    errorMessage = '処理がタイムアウトしました。ファイルサイズを確認してください。';
+                }
+                
+                errorText.textContent = errorMessage;
                 submitBtn.disabled = false;
             }
         });
@@ -498,6 +518,15 @@ app.get('/', (c) => {
 // Process endpoint - handles all three modes
 app.post('/api/process', async (c) => {
   const { OPENAI_API_KEY, OPENAI_MODEL = 'deepseek-reasoner', MAX_CONCURRENCY = '8' } = c.env
+  
+  // Log environment variables for debugging (mask sensitive data)
+  console.log('Environment check:', {
+    hasApiKey: !!OPENAI_API_KEY,
+    apiKeyLength: OPENAI_API_KEY ? OPENAI_API_KEY.length : 0,
+    apiKeyPrefix: OPENAI_API_KEY ? OPENAI_API_KEY.substring(0, 5) + '...' : 'not set',
+    model: OPENAI_MODEL,
+    maxConcurrency: MAX_CONCURRENCY
+  })
   
   if (!checkBasicAuth(c)) {
     return c.text('Unauthorized', 401)
@@ -537,7 +566,8 @@ app.post('/api/process', async (c) => {
       case 'summarize-merge':
         // Summarize and merge multiple files
         if (!OPENAI_API_KEY) {
-          return c.text('APIキーが設定されていません', 500)
+          console.error('API key not configured for API request')
+          return c.json({ error: 'APIキーが設定されていません。管理者に連絡してください。' }, 500)
         }
         resultBuffer = await summarizeAndMergeExcelFiles(
           files,
@@ -555,7 +585,8 @@ app.post('/api/process', async (c) => {
         }
         
         if (!OPENAI_API_KEY) {
-          return c.text('APIキーが設定されていません', 500)
+          console.error('API key not configured for API request')
+          return c.json({ error: 'APIキーが設定されていません。管理者に連絡してください。' }, 500)
         }
         
         const file = files[0]
