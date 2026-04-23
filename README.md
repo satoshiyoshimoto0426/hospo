@@ -1,9 +1,9 @@
-# PDF要約システム - 高齢者デイサービス月次経過記録
+# モニタリング要約システム - 高齢者デイサービス月次経過記録
 
 ## プロジェクト概要
-- **名称**: PDF要約システム
-- **目的**: 60名分の月次経過記録PDFから、利用者ごとに200〜300文字の要約を自動生成
-- **主要機能**: PDF解析、利用者単位分割、AI要約生成、Excel出力（重複名対応）
+- **名称**: モニタリング要約システム
+- **目的**: 60名分の月次経過記録PDF/Excelから、利用者ごとに200〜300文字のモニタリング要約を自動生成
+- **主要機能**: PDF/Excel解析、利用者単位分割、AI要約生成、Excel出力（重複名対応）
 
 ## URLs
 - **開発環境**: https://3000-i8az55ukot8m6s1qg0so0-6532622b.e2b.dev
@@ -70,16 +70,16 @@
   4. 並列要約生成
   5. Excel生成・ダウンロード
 - **ストレージ**: メモリ内処理のみ（データ非保存）
-- **外部API**: DeepSeek API（deepseek-reasoner）
+- **外部API**: Google Gemini API（gemini-3-flash-preview）
 
 ## 環境変数設定
 ```env
 # .dev.vars または Cloudflare Pages Secrets
-OPENAI_API_KEY=your-api-key       # 必須: DeepSeek APIキー
-OPENAI_MODEL=deepseek-reasoner    # 任意: 使用モデル（デフォルト: deepseek-reasoner）
-BASIC_USER=admin                  # 任意: Basic認証ユーザー名
-BASIC_PASS=password123            # 任意: Basic認証パスワード
-MAX_CONCURRENCY=8                 # 任意: 最大並列処理数（デフォルト: 8）
+OPENAI_API_KEY=your-gemini-api-key  # 必須: Gemini APIキー（Google AI Studioで取得）
+OPENAI_MODEL=gemini-3-flash-preview # 任意: 使用モデル（デフォルト: gemini-3-flash-preview）
+BASIC_USER=admin                    # 任意: Basic認証ユーザー名
+BASIC_PASS=password123              # 任意: Basic認証パスワード
+MAX_CONCURRENCY=8                   # 任意: 最大並列処理数（デフォルト: 8）
 ```
 
 ## 使用方法
@@ -137,7 +137,7 @@ npx wrangler pages secret put BASIC_PASS --project-name pdf-summarizer
 - **UI**: TailwindCSS + FontAwesome
 - **PDF処理**: カスタム実装（テキスト抽出）
 - **Excel生成**: ExcelJS 4.4.0
-- **AI**: DeepSeek API (deepseek-reasoner)
+- **AI**: Google Gemini API (gemini-3-flash-preview)
 - **開発ツール**: Vite, Wrangler, PM2
 
 ## セキュリティ考慮事項
@@ -151,5 +151,20 @@ npx wrangler pages secret put BASIC_PASS --project-name pdf-summarizer
 ## ライセンス
 プロプライエタリ（内部使用限定）
 
+## 要約品質の特徴（v5.0 - 現場スタッフ要望反映）
+- **文体**: 常体（だ・である調の断定調）で統一。敬体（です・ます調）は使用しない
+- **文字数**: 100〜200文字程度（短めでOK）
+- **必須構成**:
+  1. 「できていること」を必ず1つ以上記載（ポジティブな記載を含める）
+  2. 気になる点・状態を簡潔に記載
+  3. **文末は「今後の対応方針」で締める**（例：受診を促す、継続観察する等）
+- 短文構成（1文=20〜30字、句点で区切り）
+- 現在形で記載（過去完了形不使用）
+- 「対応」はスタッフ行動のみに使用
+- 実施されなかった項目は記載しない
+- できていないことばかり並べない
+- スタッフ洗身介助に「手の届きにくい」表現を使用
+- 不自然な原文も自然な日本語に修正
+
 ## 最終更新
-2024年1月
+2026年4月（v5.0 現場スタッフ要望を反映）
