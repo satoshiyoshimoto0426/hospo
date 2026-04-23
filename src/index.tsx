@@ -71,6 +71,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                     月次経過記録システム
                 </h1>
                 <p class="text-gray-600">高齢者デイサービス向け AI要約 & Excel統合ツール</p>
+                <p class="text-xs text-gray-400 mt-1">Powered by Gemini 3 Flash</p>
             </div>
             
             <!-- Mode Selection -->
@@ -131,7 +132,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                     </h2>
                     <ul class="space-y-2 text-gray-600 text-sm">
                         <li><i class="fas fa-check text-green-500 mr-2"></i>1つのPDF/Excelファイルをアップロード</li>
-                        <li><i class="fas fa-check text-green-500 mr-2"></i>各利用者ごとに200〜300文字に要約</li>
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>各利用者ごとに100〜200文字程度に要約（常体・対応方針付き）</li>
                         <li><i class="fas fa-check text-green-500 mr-2"></i>要約結果をExcelの各タブに出力</li>
                     </ul>
                 </div>
@@ -156,7 +157,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                     <ul class="space-y-2 text-gray-600 text-sm">
                         <li><i class="fas fa-star text-yellow-500 mr-2"></i><strong>複数のExcelファイルをアップロード</strong></li>
                         <li><i class="fas fa-star text-yellow-500 mr-2"></i><strong>各ファイルから利用者を抽出・統合</strong></li>
-                        <li><i class="fas fa-star text-yellow-500 mr-2"></i><strong>AIで200〜300文字に要約</strong></li>
+                        <li><i class="fas fa-star text-yellow-500 mr-2"></i><strong>AIで100〜200文字程度に要約（常体・対応方針付き）</strong></li>
                         <li><i class="fas fa-star text-yellow-500 mr-2"></i><strong>60名分を1つのExcelファイルに統合</strong></li>
                     </ul>
                     <div class="mt-3 p-3 bg-purple-50 rounded-lg">
@@ -232,7 +233,19 @@ const INDEX_HTML = `<!DOCTYPE html>
             </div>
             
             <!-- Footer -->
-            <div class="mt-8 text-center">
+            <div class="mt-8 text-center space-y-3">
+                <div class="flex justify-center gap-4 flex-wrap">
+                    <a href="/static/manual.html" target="_blank"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all shadow-sm">
+                        <i class="fas fa-book text-blue-500"></i>
+                        ユーザーマニュアル（HTML）
+                    </a>
+                    <a href="/static/manual.pdf" target="_blank" download
+                       class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-red-50 hover:border-red-400 hover:text-red-700 transition-all shadow-sm">
+                        <i class="fas fa-file-pdf text-red-500"></i>
+                        ユーザーマニュアル（PDF）
+                    </a>
+                </div>
                 <p class="text-sm text-gray-600">
                     <i class="fas fa-shield-alt mr-1"></i>
                     セキュアな環境で処理され、データは保存されません
@@ -286,9 +299,9 @@ const INDEX_HTML = `<!DOCTYPE html>
             
             if (currentMode === 'summarize') {
                 summarizeInstructions.classList.remove('hidden');
-                fileLabel.setAttribute('for', 'file');
-                fileLabelText.textContent = 'ファイルを選択';
-                fileFormatHint.textContent = '対応形式: .xlsx, .xls, .pdf（最大30MB）';
+                fileLabel.setAttribute('for', 'files');
+                fileLabelText.textContent = 'ファイルを選択（複数可）';
+                fileFormatHint.textContent = '対応形式: .xlsx, .xls, .pdf（複数選択可・最大30MB）';
                 submitText.textContent = 'AI要約を開始';
                 submitIcon.className = 'fas fa-brain mr-2';
             } else if (currentMode === 'merge') {
@@ -351,9 +364,8 @@ const INDEX_HTML = `<!DOCTYPE html>
             submitBtn.disabled = selectedFiles.length === 0;
         });
         
-        // Multiple file selection
+        // Multiple file selection (all modes)
         filesInput.addEventListener('change', (e) => {
-            if (currentMode === 'summarize') return;
             selectedFiles = Array.from(e.target.files);
             updateFileLabel();
             submitBtn.disabled = selectedFiles.length === 0;
@@ -382,8 +394,12 @@ const INDEX_HTML = `<!DOCTYPE html>
         dropZone.addEventListener('drop', (e) => {
             const files = Array.from(e.dataTransfer.files);
             if (currentMode === 'summarize') {
-                fileInput.files = e.dataTransfer.files;
-                selectedFiles = files.slice(0, 1);
+                const dt = new DataTransfer();
+                files.forEach(file => {
+                    if (file.name.match(/\\.xlsx?|\\.pdf$/i)) dt.items.add(file);
+                });
+                filesInput.files = dt.files;
+                selectedFiles = Array.from(dt.files);
             } else {
                 const dt = new DataTransfer();
                 files.forEach(file => {
@@ -442,7 +458,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                 } else if (currentMode === 'merge') {
                     updateProgress(50, 'ファイルを統合中...', '利用者ごとにデータを整理しています');
                 } else {
-                    updateProgress(50, 'AI要約を生成中...', '記録を解析しています');
+                    updateProgress(50, 'AI要約を生成中...', \`\${selectedFiles.length}ファイルの各利用者を要約しています\`);
                 }
                 
                 const blob = await response.blob();
@@ -462,7 +478,9 @@ const INDEX_HTML = `<!DOCTYPE html>
                 setTimeout(() => {
                     progressArea.classList.add('hidden');
                     successArea.classList.remove('hidden');
-                    if (currentMode === 'summarize-merge') {
+                    if (currentMode === 'summarize') {
+                        successText.textContent = \`要約完了！Excelの各タブに利用者ごとの要約が出力されました。\`;
+                    } else if (currentMode === 'summarize-merge') {
                         successText.textContent = \`\${selectedFiles.length}個のファイルを要約・統合しました！\`;
                     }
                     submitBtn.disabled = false;
@@ -480,7 +498,7 @@ const INDEX_HTML = `<!DOCTYPE html>
                 // Provide more helpful error messages
                 let errorMessage = error.message || 'エラーが発生しました';
                 if (errorMessage.includes('APIキー')) {
-                    errorMessage += ' (DeepSeek APIキーの設定を確認してください)';
+                    errorMessage += ' (Gemini APIキーの設定を確認してください)';
                 } else if (errorMessage.includes('Failed to fetch')) {
                     errorMessage = 'サーバーに接続できません。しばらく待ってから再試行してください。';
                 } else if (errorMessage.includes('timeout')) {
@@ -517,13 +535,13 @@ app.get('/', (c) => {
 
 // Process endpoint - handles all three modes
 app.post('/api/process', async (c) => {
-  const { OPENAI_API_KEY, OPENAI_MODEL = 'deepseek-chat', MAX_CONCURRENCY = '8' } = c.env
+  const { OPENAI_API_KEY, OPENAI_MODEL = 'gemini-3-flash-preview', MAX_CONCURRENCY = '8' } = c.env
   
   // Log environment variables for debugging (mask sensitive data)
   console.log('Environment check:', {
     hasApiKey: !!OPENAI_API_KEY,
     apiKeyLength: OPENAI_API_KEY ? OPENAI_API_KEY.length : 0,
-    apiKeyPrefix: OPENAI_API_KEY ? OPENAI_API_KEY.substring(0, 5) + '...' : 'not set',
+    apiKeyPrefix: OPENAI_API_KEY ? OPENAI_API_KEY.substring(0, 8) + '...' : 'not set',
     model: OPENAI_MODEL,
     maxConcurrency: MAX_CONCURRENCY
   })
@@ -633,8 +651,9 @@ app.post('/api/process', async (c) => {
 app.get('/api/health', (c) => {
   return c.json({
     status: 'healthy',
-    version: '3.0.0',
-    features: ['要約のみ', '統合のみ', '要約＋統合']
+    version: '4.0.0',
+    features: ['要約のみ', '統合のみ', '要約＋統合'],
+    ai_model: 'Gemini 3 Flash (gemini-3-flash-preview)'
   })
 })
 

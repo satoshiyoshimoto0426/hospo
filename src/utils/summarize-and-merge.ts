@@ -178,7 +178,7 @@ function setupSummarySheet(worksheet: ExcelJS.Worksheet, summaries: PersonSummar
   worksheet.addRow([]) // Empty row
   
   // Add header
-  const headerRow = worksheet.addRow(['No.', '利用者名', '要約（200-300文字）', 'ソースファイル', '文字数'])
+  const headerRow = worksheet.addRow(['No.', '利用者名', '要約（100-200文字程度・常体）', 'ソースファイル', '文字数'])
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
   headerRow.fill = {
     type: 'pattern',
@@ -209,7 +209,7 @@ function setupSummarySheet(worksheet: ExcelJS.Worksheet, summaries: PersonSummar
     if (isError) {
       row.getCell(3).font = { color: { argb: 'FFDC2626' } }
       row.getCell(5).font = { color: { argb: 'FFDC2626' } }
-    } else if (charCount >= 200 && charCount <= 300) {
+    } else if (charCount >= 80 && charCount <= 250) {
       row.getCell(5).font = { color: { argb: 'FF059669' } }
     }
     
@@ -264,7 +264,7 @@ function setupPersonSummarySheet(worksheet: ExcelJS.Worksheet, personData: Perso
   worksheet.addRow([]) // Empty row
   
   // Add summary section
-  const summaryHeaderRow = worksheet.addRow(['📝 AI要約', '200〜300文字の要約'])
+  const summaryHeaderRow = worksheet.addRow(['📝 AI要約', '100〜200文字程度の要約（常体）'])
   summaryHeaderRow.font = { bold: true, size: 12 }
   summaryHeaderRow.fill = {
     type: 'pattern',
@@ -285,7 +285,7 @@ function setupPersonSummarySheet(worksheet: ExcelJS.Worksheet, personData: Perso
   const charCount = personData.summary.replace(/\n/g, '').length
   const statsRow = worksheet.addRow(['文字数', `${charCount}文字`])
   statsRow.getCell(2).font = { 
-    color: charCount >= 200 && charCount <= 300 
+    color: charCount >= 80 && charCount <= 250 
       ? { argb: 'FF059669' } 
       : { argb: 'FFDC2626' }
   }
